@@ -11,6 +11,39 @@
       ]
     }
   ],
+  "intents": [
+    {
+      "match": ["使用Claude技能", "调用技能", "skill plan", "计划技能执行"],
+      "action": { "tool": "claudeSkills.plan" },
+      "params_mapping": { "skillId": "$user.skillId", "params": "$user.params" },
+      "confirm_required": false,
+      "notes": "任何技能先生成计划；非白名单仅计划，不执行"
+    },
+    {
+      "match": ["Notion 创建页面", "新增页面", "写入数据库页面", "创建 Notion Page"],
+      "action": { "tool": "claudeSkills.run" },
+      "default_params": { "skillId": "notion.create_page", "confirm": false },
+      "params_prompt": [
+        "请提供 payloadFile (SkillGen-MVP/payloads/*.json)",
+        "可选 token（默认取环境 NOTION_TOKEN）"
+      ],
+      "params_allowed": ["token", "payloadFile"],
+      "confirm_required": true,
+      "notes": "白名单执行：预览后需确认"
+    },
+    {
+      "match": ["Notion 创建数据库", "新增数据库", "创建 Notion Database"],
+      "action": { "tool": "claudeSkills.run" },
+      "default_params": { "skillId": "notion.create_database", "confirm": false },
+      "params_prompt": [
+        "请提供 payloadFile (SkillGen-MVP/payloads/db_*.json)",
+        "可选 token（默认取环境 NOTION_TOKEN）"
+      ],
+      "params_allowed": ["token", "payloadFile"],
+      "confirm_required": true,
+      "notes": "白名单执行：预览后需确认"
+    }
+  ],
   "routing": [
     {
       "intent": "use_claude_skill",

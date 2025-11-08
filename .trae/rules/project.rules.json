@@ -19,10 +19,16 @@
     "dir": "artifacts/run_logs",
     "filename_format": "notion_YYYYMMDD_HHmmss.json"
   },
+  "deny_paths": [
+    "*",
+    "!SkillGen-MVP/scripts/notion_page_create.py",
+    "!SkillGen-MVP/scripts/notion_db_create.py"
+  ],
   "routing": {
     "default_preview": true,
     "confirm_required": true,
     "reject_on_unknown_args": true,
-    "reject_on_non_whitelist_script": true
+    "reject_on_non_whitelist_script": true,
+    "on_error": "提示用户修正：检查 NOTION_TOKEN、payloadFile 路径、白名单脚本、参数合法性"
   }
 }
