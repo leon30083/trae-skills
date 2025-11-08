@@ -1,0 +1,15 @@
+{
+  "name": "claude-skills-runner",
+  "version": "0.1.0",
+  "description": "Minimal MCP-like STDIO server to run Claude skills with strict whitelist and confirmation",
+  "private": true,
+  "type": "commonjs",
+  "main": "mcp-server.js",
+  "scripts": {
+    "start": "node mcp-server.js"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18"
+  }
+}
