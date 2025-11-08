@@ -1,9 +1,9 @@
 # MCP 集成占位（claude-skills-runner）
 
 目标：
-- 最小 MCP server 示例（STDIO），提供工具 claudeSkills.run
+- 最小 MCP server 示例（STDIO），提供工具 claudeSkills.plan / claudeSkills.run
 - 工具注册模板（notion.create_page / notion.create_database 对应脚本）
-- 与 Trae 规则的路由衔接说明（预览+确认）
+- 与 Trae 规则的路由衔接说明（plan 先行，run 预览+确认）
 
 快速开始（本地最小服务器）
 1) 启动（PowerShell）：
@@ -24,11 +24,15 @@
 ```
 
 3) 工具调用约定（STDIO JSON 行）：
-- 预览：
+- 计划（不可执行技能，仅读取文档）：
+```
+{"type":"tool_call","tool":"claudeSkills.plan","params":{"skillId":"http_api_integration","params":{}}}
+```
+- 预览（run，不执行）：
 ```
 {"type":"tool_call","tool":"claudeSkills.run","params":{"skillId":"notion.create_page","payloadFile":"SkillGen-MVP/payloads/page_simple.json"}}
 ```
-- 确认执行：
+- 确认执行（run，白名单 Notion 技能）：
 ```
 {"type":"tool_call","tool":"claudeSkills.run","params":{"skillId":"notion.create_page","payloadFile":"SkillGen-MVP/payloads/page_simple.json","confirm":true,"token":"<可选覆盖，默认取环境NOTION_TOKEN>"}}
 ```
@@ -36,7 +40,8 @@
 安全约束：
 - 白名单脚本：SkillGen-MVP/scripts/notion_page_create.py、notion_db_create.py
 - 仅允许参数：--token、--payload-file（对应 JSON 的 token/payloadFile）
-- 必须先预览，确认（confirm=true）才执行
+- 计划工具：仅读取文档，不执行任何脚本
+- 运行工具：必须先预览，确认（confirm=true）才执行
 - 输出日志：artifacts/run_logs/notion_YYYYMMDD_HHMMSS.json
 - 可选代理：HTTP_PROXY/HTTPS_PROXY 默认使用 127.0.0.1:7890（Windows Clash）
 

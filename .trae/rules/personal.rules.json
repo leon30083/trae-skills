@@ -1,0 +1,45 @@
+{
+  "version": "1.0",
+  "description": "Trae 个人规则：项目初始化遵循 OpenSpec，并引导 Claude skills 使用（plan 优先，run 需确认）",
+  "triggers": [
+    {
+      "id": "init_project_with_openspec_and_claude_skills",
+      "when": "project.create",
+      "actions": [
+        { "type": "ensure_file", "path": "Trae-skills/openspec/specs/claude-skills.openspec.md" },
+        { "type": "register_mcp_stdio", "command": "node Trae-skills/mcp/mcp-server.js" }
+      ]
+    }
+  ],
+  "routing": [
+    {
+      "intent": "use_claude_skill",
+      "tool": "claudeSkills.plan",
+      "confirm_required": false,
+      "notes": "任何技能先生成计划；非白名单仅计划，不执行"
+    },
+    {
+      "intent": "execute_notion_page",
+      "tool": "claudeSkills.run",
+      "confirm_required": true,
+      "params_allowed": ["token", "payloadFile"],
+      "notes": "Notion 创建页面（白名单执行），必须预览并确认"
+    },
+    {
+      "intent": "execute_notion_database",
+      "tool": "claudeSkills.run",
+      "confirm_required": true,
+      "params_allowed": ["token", "payloadFile"],
+      "notes": "Notion 创建数据库（白名单执行），必须预览并确认"
+    }
+  ],
+  "policies": {
+    "confirm_required_for_execution": true,
+    "logging_required": true,
+    "proxy_required": true,
+    "proxy": {
+      "HTTP_PROXY": "http://127.0.0.1:7890",
+      "HTTPS_PROXY": "http://127.0.0.1:7890"
+    }
+  }
+}

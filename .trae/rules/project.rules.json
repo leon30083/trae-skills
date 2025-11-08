@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "description": "Trae 项目规则：Claude skills 执行白名单与安全约束",
+  "whitelist_skills": [
+    "notion_page_create",
+    "notion_db_create"
+  ],
+  "whitelist_scripts": [
+    "SkillGen-MVP/scripts/notion_page_create.py",
+    "SkillGen-MVP/scripts/notion_db_create.py"
+  ],
+  "allowed_args": ["--token", "--payload-file"],
+  "env": {
+    "NOTION_TOKEN": "optional",
+    "HTTP_PROXY": "http://127.0.0.1:7890",
+    "HTTPS_PROXY": "http://127.0.0.1:7890"
+  },
+  "logging": {
+    "dir": "artifacts/run_logs",
+    "filename_format": "notion_YYYYMMDD_HHmmss.json"
+  },
+  "routing": {
+    "default_preview": true,
+    "confirm_required": true,
+    "reject_on_unknown_args": true,
+    "reject_on_non_whitelist_script": true
+  }
+}

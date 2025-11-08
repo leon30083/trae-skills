@@ -1,5 +1,5 @@
-// Minimal MCP-like STDIO server (skeleton) for claudeSkills.run
-// 安全约束：仅允许执行白名单 Notion 脚本，且仅允许 --token / --payload-file 两个参数；默认 dry-run 预览命令，需 confirm=true 才会执行。
+// Minimal MCP-like STDIO server for claudeSkills.plan & claudeSkills.run
+// 安全约束（run）：仅允许执行白名单 Notion 脚本，且仅允许 --token / --payload-file 两个参数；默认 dry-run 预览命令，需 confirm=true 才会执行。
 
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -13,6 +13,19 @@ const SCRIPTS = {
 
 // 仅允许的参数键
 const ALLOWED_PARAMS = new Set(['token', 'payloadFile', 'confirm']);
+
+// 计划工具：技能文档映射（只读，不执行）
+const DOCS_DIR = path.join('Claude skills', 'n8n-workflow-patterns');
+const SKILL_DOC_MAP = {
+  'http_api_integration': path.join(DOCS_DIR, 'http_api_integration.md'),
+  'database_operations': path.join(DOCS_DIR, 'database_operations.md'),
+  'scheduled_tasks': path.join(DOCS_DIR, 'scheduled_tasks.md'),
+  'webhook_processing': path.join(DOCS_DIR, 'webhook_processing.md'),
+  'ai_agent_workflow': path.join(DOCS_DIR, 'ai_agent_workflow.md'),
+  // Notion 技能参考原始资料说明文档（仅做计划，不执行）
+  'notion_page_create': path.join('原始资料', 'notion测试用.md'),
+  'notion_db_create': path.join('原始资料', 'notion测试用.md'),
+};
 
 function nowStamp() {
   const d = new Date();
@@ -96,9 +109,89 @@ function runCommandPS(cmd) {
   });
 }
 
+// 读取技能文档并生成最小步骤计划（不执行）
+function readDocLines(docPath) {
+  try {
+    const txt = fs.readFileSync(docPath, 'utf8');
+    return txt.split(/\r?\n/);
+  } catch (e) {
+    return [];
+  }
+}
+
+function extractStepsFromDoc(lines) {
+  const steps = [];
+  for (const line of lines) {
+    const l = line.trim();
+    if (!l) continue;
+    // 提取标题与要点
+    if (l.startsWith('#')) {
+      steps.push(l.replace(/^#+\s*/, '章节: '));
+    } else if (l.startsWith('- ') || l.startsWith('* ')) {
+      steps.push(l.replace(/^[-*]\s*/, '步骤: '));
+    }
+    if (steps.length >= 12) break; // 控制长度，避免冗长
+  }
+  if (steps.length === 0) {
+    steps.push('阅读技能文档并提取关键步骤');
+    steps.push('准备必要的环境变量与权限');
+  }
+  return steps;
+}
+
+function inferEnv(skillId) {
+  const env = {
+    HTTP_PROXY: 'http://127.0.0.1:7890',
+    HTTPS_PROXY: 'http://127.0.0.1:7890',
+  };
+  if (skillId.startsWith('notion')) {
+    env.NOTION_TOKEN = 'required_or_env';
+  }
+  return env;
+}
+
+function inferPermissions(skillId) {
+  const perms = ['filesystem:read_docs'];
+  if (skillId === 'http_api_integration' || skillId === 'webhook_processing' || skillId === 'ai_agent_workflow') {
+    perms.push('network:outbound');
+  }
+  if (skillId === 'scheduled_tasks') {
+    perms.push('scheduler');
+  }
+  if (skillId === 'database_operations') {
+    perms.push('database');
+  }
+  if (skillId.startsWith('notion')) {
+    perms.push('network:outbound');
+  }
+  return perms;
+}
+
+function isExecutableSkill(skillId) {
+  return skillId === 'notion_page_create' || skillId === 'notion_db_create';
+}
+
+async function handlePlanCall(msg) {
+  const { skillId, params } = msg.params || {};
+  if (!skillId) {
+    return { type: 'tool_error', tool: msg.tool, error: 'skillId 必填' };
+  }
+  const docPath = SKILL_DOC_MAP[skillId];
+  const lines = docPath ? readDocLines(docPath) : [];
+  const steps = extractStepsFromDoc(lines);
+  const env = inferEnv(skillId);
+  const permissions = inferPermissions(skillId);
+  const executable = isExecutableSkill(skillId);
+  return {
+    type: 'tool_result',
+    tool: msg.tool,
+    plan: { steps, env, permissions, executable, doc_refs: docPath && fs.existsSync(docPath) ? [docPath] : [] },
+  };
+}
+
 // 简单的 STDIO 循环：接收 JSON 输入，返回 JSON 输出
 process.stdin.setEncoding('utf8');
-console.log(JSON.stringify({ type: 'ready', server: 'claude-skills-runner', version: '0.1.0' }));
+console.log(JSON.stringify({ type: 'ready', server: 'claude-skills-runner', version: '0.2.0' }));
 
 let buffer = '';
 process.stdin.on('data', async (chunk) => {
@@ -126,6 +219,15 @@ process.stdin.on('data', async (chunk) => {
               JSON.stringify({ type: 'tool_result', tool: msg.tool, executed: true, ...res }) + '\n'
             );
           }
+        } catch (err) {
+          process.stdout.write(
+            JSON.stringify({ type: 'tool_error', tool: msg.tool, error: err.message }) + '\n'
+          );
+        }
+      } else if (msg.type === 'tool_call' && msg.tool === 'claudeSkills.plan') {
+        try {
+          const res = await handlePlanCall(msg);
+          process.stdout.write(JSON.stringify(res) + '\n');
         } catch (err) {
           process.stdout.write(
             JSON.stringify({ type: 'tool_error', tool: msg.tool, error: err.message }) + '\n'
